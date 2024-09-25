@@ -57,6 +57,24 @@ export class Syslog implements INodeType {
 							required: true,
 					},
 					{
+							displayName: 'Syslog RFC Variant',
+							name: 'rfc',
+							type: 'options',
+							options: [
+									{
+											name: 'RFC3164 (BSD)',
+											value: true,
+									},
+									{
+											name: 'RFC5424',
+											value: false,
+									},
+							],
+							default: false,
+							description: 'Which RFC variant to use',
+							required: true,
+					},
+					{
 							displayName: 'Facility',
 							name: 'facility',
 							type: 'options',
@@ -171,6 +189,13 @@ export class Syslog implements INodeType {
 							required: true,
 					},
 					{
+							displayName: 'Application Name',
+							name: 'appname',
+							type: 'string',
+							default: '',
+							placeholder: 'App name for syslog message',
+					},
+					{
 							displayName: 'Message',
 							name: 'message',
 							type: 'string',
@@ -188,10 +213,12 @@ export class Syslog implements INodeType {
 			const syslogHost = this.getNodeParameter('syslogHost', 0) as string;
 			const syslogPort = this.getNodeParameter('syslogPort', 0) as number;
 			const protocol = this.getNodeParameter('protocol', 0) as string;
+			const rfc = this.getNodeParameter('rfc', 0) as boolean;
 			const message = this.getNodeParameter('message', 0) as string;
 			const hostname = this.getNodeParameter('hostname', 0) as string;
 			const facility = this.getNodeParameter('facility', 0) as number;
 			const severity = this.getNodeParameter('severity', 0) as number;
+			const appName = this.getNodeParameter('appname', 0) as string;
 
 			// Constant array for use with logOptions to set facility based on
 			// choice in N8N. Same approach for severity.
@@ -227,25 +254,23 @@ export class Syslog implements INodeType {
 			type SeverityKeys = keyof typeof severityLevels;
 
 			// Configure syslog client options
-			const clientOptions = {
+			const options = {
+				rfc3164: rfc,
 				syslogHostname: hostname,
 				transport: protocol === 'tcp' ? syslog.Transport.Tcp : syslog.Transport.Udp,
 				port: syslogPort,
-		};
-
-			const client = syslog.createClient(syslogHost, clientOptions);
-
-			// Configure log options
-			const logOptions = {
 				facility: facilityLevels[facility as FacilityKeys],
 				severity: severityLevels[severity as SeverityKeys],
-			};
+				appName: appName,
+		};
+
+			const client = syslog.createClient(syslogHost, options);
 
 			try {
 					for (let i = 0; i < items.length; i++) {
 							// Send message to syslog
 							await new Promise<void>((resolve, reject) => {
-									client.log(message, logOptions, (error) => {
+									client.log(message, options, (error) => {
 											if (error) {
 													reject(error);
 											} else {
