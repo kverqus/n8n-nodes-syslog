@@ -3,6 +3,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as syslog from 'syslog-client';
@@ -17,7 +18,6 @@ export class Syslog implements INodeType {
 			description: 'Forwards data to an external syslog receiver',
 			defaults: {
 					name: 'Syslog',
-					color: '#1F72E5',
 			},
 			inputs: ['main'],
 			outputs: ['main'],
@@ -259,7 +259,7 @@ export class Syslog implements INodeType {
 							});
 					}
 			} catch (error) {
-					throw new Error(`Syslog Error: ${error.message}`);
+					throw new NodeOperationError(`Syslog Error: ${error.message}`, error);
 			}
 
 			return [returnData];
