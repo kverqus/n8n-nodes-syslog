@@ -23,7 +23,7 @@ export class Syslog implements INodeType {
 			outputs: ['main'],
 			properties: [
 					{
-							displayName: 'Syslog Host',
+							displayName: 'Host',
 							name: 'syslogHost',
 							type: 'string',
 							default: '',
@@ -31,7 +31,7 @@ export class Syslog implements INodeType {
 							required: true,
 					},
 					{
-							displayName: 'Syslog Port',
+							displayName: 'Port',
 							name: 'syslogPort',
 							type: 'number',
 							default: 514,
@@ -57,7 +57,7 @@ export class Syslog implements INodeType {
 							required: true,
 					},
 					{
-							displayName: 'Syslog RFC Variant',
+							displayName: 'Syslog Version',
 							name: 'rfc',
 							type: 'options',
 							options: [
@@ -71,7 +71,7 @@ export class Syslog implements INodeType {
 									},
 							],
 							default: false,
-							description: 'Which RFC variant to use',
+							description: 'Which syslog version to use',
 							required: true,
 					},
 					{
