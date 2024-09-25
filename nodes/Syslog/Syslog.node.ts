@@ -1,0 +1,267 @@
+import {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
+
+import * as syslog from 'syslog-client';
+
+export class Syslog implements INodeType {
+	description: INodeTypeDescription = {
+			displayName: 'Syslog',
+			icon: 'file:syslog.svg',
+			name: 'syslog',
+			group: ['advanced'],
+			version: 1,
+			description: 'Forwards data to an external syslog receiver',
+			defaults: {
+					name: 'Syslog',
+					color: '#1F72E5',
+			},
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [
+					{
+							displayName: 'Syslog Host',
+							name: 'syslogHost',
+							type: 'string',
+							default: '',
+							placeholder: 'Syslog server IP or hostname',
+							required: true,
+					},
+					{
+							displayName: 'Syslog Port',
+							name: 'syslogPort',
+							type: 'number',
+							default: 514,
+							placeholder: '514 (default)',
+							required: true,
+					},
+					{
+							displayName: 'Protocol',
+							name: 'protocol',
+							type: 'options',
+							options: [
+									{
+											name: 'UDP',
+											value: 'udp',
+									},
+									{
+											name: 'TCP',
+											value: 'tcp',
+									},
+							],
+							default: 'udp',
+							description: 'The protocol to use for sending syslog messages',
+							required: true,
+					},
+					{
+							displayName: 'Facility',
+							name: 'facility',
+							type: 'options',
+							options: [
+								{
+									name: 'Kernel',
+									value: 0
+								},
+								{
+									name: 'User',
+									value: 1
+								},
+								{
+									name: 'System',
+									value: 3
+								},
+								{
+									name: 'Audit',
+									value: 13
+								},
+								{
+									name: 'Alert',
+									value: 14
+								},
+								{
+									name: 'Local0',
+									value: 16
+								},
+								{
+									name: 'Local1',
+									value: 17
+								},
+								{
+									name: 'Local2',
+									value: 18
+								},
+								{
+									name: 'Local3',
+									value: 19
+								},
+								{
+									name: 'Local4',
+									value: 20
+								},
+								{
+									name: 'Local5',
+									value: 21
+								},
+								{
+									name: 'Local6',
+									value: 22
+								},
+								{
+									name: 'Local7',
+									value: 23
+								},
+
+							],
+							default: 1,
+							placeholder: 'Message facility',
+							required: true,
+					},
+					{
+							displayName: 'Severity',
+							name: 'severity',
+							type: 'options',
+							options: [
+								{
+									name: 'Emergency',
+									value: 0
+								},
+								{
+									name: 'Alert',
+									value: 1
+								},
+								{
+									name: 'Critical',
+									value: 2
+								},
+								{
+									name: 'Error',
+									value: 3
+								},
+								{
+									name: 'Warning',
+									value: 4
+								},
+								{
+									name: 'Notice',
+									value: 5
+								},
+								{
+									name: 'Informational',
+									value: 6
+								},
+								{
+									name: 'Debug',
+									value: 7
+								},
+
+							],
+							default: 6,
+							placeholder: 'Message severity',
+							required: true,
+					},
+					{
+							displayName: 'Hostname',
+							name: 'hostname',
+							type: 'string',
+							default: 'localhost',
+							placeholder: 'Hostname for syslog message',
+							required: true,
+					},
+					{
+							displayName: 'Message',
+							name: 'message',
+							type: 'string',
+							default: '',
+							placeholder: 'Message to send to syslog',
+							required: true,
+					},
+			],
+	};
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+			const items = this.getInputData();
+			const returnData: INodeExecutionData[] = [];
+
+			const syslogHost = this.getNodeParameter('syslogHost', 0) as string;
+			const syslogPort = this.getNodeParameter('syslogPort', 0) as number;
+			const protocol = this.getNodeParameter('protocol', 0) as string;
+			const message = this.getNodeParameter('message', 0) as string;
+			const hostname = this.getNodeParameter('hostname', 0) as string;
+			const facility = this.getNodeParameter('facility', 0) as number;
+			const severity = this.getNodeParameter('severity', 0) as number;
+
+			// Constant array for use with logOptions to set facility based on
+			// choice in N8N. Same approach for severity.
+			const facilityLevels = {
+				0: syslog.Facility.Alert,
+				1: syslog.Facility.User,
+				3: syslog.Facility.System,
+				13: syslog.Facility.Audit,
+				14: syslog.Facility.Alert,
+				16: syslog.Facility.Local0,
+				17: syslog.Facility.Local1,
+				18: syslog.Facility.Local2,
+				19: syslog.Facility.Local3,
+				20: syslog.Facility.Local4,
+				21: syslog.Facility.Local5,
+				22: syslog.Facility.Local6,
+				23: syslog.Facility.Local7,
+			} as const;
+
+			type FacilityKeys = keyof typeof facilityLevels;
+
+			const severityLevels = {
+				0: syslog.Severity.Emergency,
+				1: syslog.Severity.Alert,
+				2: syslog.Severity.Critical,
+				3: syslog.Severity.Error,
+				4: syslog.Severity.Warning,
+				5: syslog.Severity.Notice,
+				6: syslog.Severity.Informational,
+				7: syslog.Severity.Debug
+			} as const;
+
+			type SeverityKeys = keyof typeof severityLevels;
+
+			// Configure syslog client options
+			const clientOptions = {
+				syslogHostname: hostname,
+				transport: protocol === 'tcp' ? syslog.Transport.Tcp : syslog.Transport.Udp,
+				port: syslogPort,
+		};
+
+			const client = syslog.createClient(syslogHost, clientOptions);
+
+			// Configure log options
+			const logOptions = {
+				facility: facilityLevels[facility as FacilityKeys],
+				severity: severityLevels[severity as SeverityKeys],
+			};
+
+			try {
+					for (let i = 0; i < items.length; i++) {
+							// Send message to syslog
+							await new Promise<void>((resolve, reject) => {
+									client.log(message, logOptions, (error) => {
+											if (error) {
+													reject(error);
+											} else {
+													resolve();
+											}
+									});
+							});
+
+							returnData.push({
+									json: { status: 'Message sent to syslog', message },
+							});
+					}
+			} catch (error) {
+					throw new Error(`Syslog Error: ${error.message}`);
+			}
+
+			return [returnData];
+	}
+}
