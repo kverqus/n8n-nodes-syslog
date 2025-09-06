@@ -22,46 +22,22 @@ export class Syslog implements INodeType {
 		inputs: ['main'],
 		outputs: ['main', 'main'],
 		outputNames: ['syslog', 'passthrough'],
+		credentials: [
+			{
+				name: 'syslogServer',
+				required: true,
+			},
+		],
 		properties: [
-			{
-				displayName: 'Host',
-				name: 'syslogHost',
-				type: 'string',
-				default: '',
-				placeholder: 'Syslog server IP or hostname',
-				required: true,
-			},
-			{
-				displayName: 'Port',
-				name: 'syslogPort',
-				type: 'number',
-				default: 514,
-				placeholder: '514 (default)',
-				required: true,
-			},
-			{
-				displayName: 'Protocol',
-				name: 'protocol',
-				type: 'options',
-				options: [
-					{
-						name: 'UDP',
-						value: 'udp',
-					},
-					{
-						name: 'TCP',
-						value: 'tcp',
-					},
-				],
-				default: 'udp',
-				description: 'The protocol to use for sending syslog messages',
-				required: true,
-			},
 			{
 				displayName: 'Syslog Version',
 				name: 'rfc',
 				type: 'options',
 				options: [
+					{
+						name: 'Default (from credential)',
+						value: 'default',
+					},
 					{
 						name: 'RFC3164 (BSD)',
 						value: true,
@@ -71,9 +47,8 @@ export class Syslog implements INodeType {
 						value: false,
 					},
 				],
-				default: false,
-				description: 'Which syslog version to use',
-				required: true,
+				default: 'default',
+				description: 'Which syslog version to use. Choose "Default" to use the setting from your credential, or override with a specific version.',
 			},
 			{
 				displayName: 'Facility',
@@ -217,13 +192,21 @@ export class Syslog implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const passthroughData: INodeExecutionData[] = [];
 
+		const credentials = await this.getCredentials('syslogServer');
+		const { host: syslogHost, port: syslogPort, protocol, rfc: credentialRfc } = credentials as {
+			host: string;
+			port: number;
+			protocol: string;
+			rfc: boolean;
+		};
+
 		const enablePassthrough = this.getNodeParameter('enablePassthrough', 0) as boolean;
-		const syslogHost = this.getNodeParameter('syslogHost', 0) as string;
-		const syslogPort = this.getNodeParameter('syslogPort', 0) as number;
-		const protocol = this.getNodeParameter('protocol', 0) as string;
-		const rfc = this.getNodeParameter('rfc', 0) as boolean;
+		const nodeRfc = this.getNodeParameter('rfc', 0) as string | boolean;
 		const hostname = this.getNodeParameter('hostname', 0) as string;
 		const appName = this.getNodeParameter('appname', 0) as string;
+
+		// Determine which RFC setting to use: node override or credential default
+		const rfc = nodeRfc === 'default' ? credentialRfc : (nodeRfc as boolean);
 
 		// Constant array for use with logOptions to set facility based on
 		// choice in N8N. Same approach for severity.
