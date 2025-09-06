@@ -223,6 +223,8 @@ export class Syslog implements INodeType {
 		const syslogPort = this.getNodeParameter('syslogPort', 0) as number;
 		const protocol = this.getNodeParameter('protocol', 0) as string;
 		const rfc = this.getNodeParameter('rfc', 0) as boolean;
+		const hostname = this.getNodeParameter('hostname', 0) as string;
+		const appName = this.getNodeParameter('appname', 0) as string;
 
 		// Constant array for use with logOptions to set facility based on
 		// choice in N8N. Same approach for severity.
@@ -260,8 +262,10 @@ export class Syslog implements INodeType {
 		// Configure syslog client options
 		const clientOptions = {
 			rfc3164: rfc,
+			syslogHostname: hostname,
 			transport: protocol === 'tcp' ? syslog.Transport.Tcp : syslog.Transport.Udp,
 			port: syslogPort,
+			appName: appName,
 		};
 
 		const client = syslog.createClient(syslogHost, clientOptions);
@@ -270,17 +274,13 @@ export class Syslog implements INodeType {
 			for (let i = 0; i < items.length; i++) {
 				// Get item parameters
 				const message = this.getNodeParameter('message', i) as string;
-				const hostname = this.getNodeParameter('hostname', i) as string;
 				const facility = this.getNodeParameter('facility', i) as number;
 				const severity = this.getNodeParameter('severity', i) as number;
-				const appName = this.getNodeParameter('appname', i) as string;
 
 				// Configure message options
 				const messageOptions = {
-					syslogHostname: hostname,
 					facility: facilityLevels[facility as FacilityKeys],
 					severity: severityLevels[severity as SeverityKeys],
-					appName: appName,
 				};
 
 				// Send message to syslog
