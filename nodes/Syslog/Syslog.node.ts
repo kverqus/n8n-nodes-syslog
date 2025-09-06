@@ -204,7 +204,7 @@ export class Syslog implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Enable passthrough',
+				displayName: 'Enable Passthrough',
 				name: 'enablePassthrough',
 				type: 'boolean',
 				default: true,
