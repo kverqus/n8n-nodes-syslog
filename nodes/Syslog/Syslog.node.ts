@@ -4,6 +4,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import * as syslog from 'syslog-client';
@@ -19,8 +20,9 @@ export class Syslog implements INodeType {
 		defaults: {
 			name: 'Syslog',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main, NodeConnectionType.Main],
+		outputNames: ['syslog', 'passthrough'],
 		properties: [
 			{
 				displayName: 'Host',
@@ -201,13 +203,22 @@ export class Syslog implements INodeType {
 				placeholder: 'Message to send to syslog',
 				required: true,
 			},
+			{
+				displayName: 'Enable passthrough',
+				name: 'enablePassthrough',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to pass the input data through to a second output',
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
+		const passthroughData: INodeExecutionData[] = [];
 
+		const enablePassthrough = this.getNodeParameter('enablePassthrough', 0) as boolean;
 		const syslogHost = this.getNodeParameter('syslogHost', 0) as string;
 		const syslogPort = this.getNodeParameter('syslogPort', 0) as number;
 		const protocol = this.getNodeParameter('protocol', 0) as string;
@@ -286,11 +297,19 @@ export class Syslog implements INodeType {
 				returnData.push({
 					json: { status: 'Message sent to syslog', message },
 				});
+
+				if (enablePassthrough) {
+					passthroughData.push(items[i]);
+				}
 			}
 		} catch (error) {
-			throw new NodeOperationError(`Syslog Error: ${error.message}`, error);
+			throw new NodeOperationError(this.getNode(), error);
 		}
 
-		return [returnData];
+		if (enablePassthrough) {
+			return [returnData, passthroughData];
+		} else {
+			return [returnData];
+		}
 	}
 }
