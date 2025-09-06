@@ -4,7 +4,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
-	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import * as syslog from 'syslog-client';
@@ -20,8 +19,8 @@ export class Syslog implements INodeType {
 		defaults: {
 			name: 'Syslog',
 		},
-		inputs: [NodeConnectionTypes.Main],
-		outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+		inputs: ['main'],
+		outputs: ['main', 'main'],
 		outputNames: ['syslog', 'passthrough'],
 		properties: [
 			{
