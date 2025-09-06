@@ -216,7 +216,7 @@ export class Syslog implements INodeType {
 		// Constant array for use with logOptions to set facility based on
 		// choice in N8N. Same approach for severity.
 		const facilityLevels = {
-			0: syslog.Facility.Alert,
+			0: syslog.Facility.Kernel,
 			1: syslog.Facility.User,
 			3: syslog.Facility.System,
 			13: syslog.Facility.Audit,
