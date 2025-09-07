@@ -36,7 +36,7 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "dist/credentials/SyslogServer.credentials.js"
+      "dist/credentials/SyslogServerApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/Syslog/Syslog.node.js"

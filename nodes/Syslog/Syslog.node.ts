@@ -23,7 +23,7 @@ export class Syslog implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'syslogServer',
+				name: 'syslogServerApi',
 				required: true,
 			},
 		],
@@ -34,7 +34,7 @@ export class Syslog implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Default (from credential)',
+						name: 'Default (From Credential)',
 						value: 'default',
 					},
 					{
@@ -191,7 +191,7 @@ export class Syslog implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const credentials = await this.getCredentials('syslogServer');
+		const credentials = await this.getCredentials('syslogServerApi');
 		const {
 			host: syslogHost,
 			port: syslogPort,

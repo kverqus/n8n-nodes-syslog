@@ -3,8 +3,8 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class SyslogServer implements ICredentialType {
-	name = 'syslogServer';
+export class SyslogServerApi implements ICredentialType {
+	name = 'syslogServerApi';
 	displayName = 'Syslog Server';
 	documentationUrl = '';
 	properties: INodeProperties[] = [
