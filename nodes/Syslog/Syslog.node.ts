@@ -20,8 +20,7 @@ export class Syslog implements INodeType {
 			name: 'Syslog',
 		},
 		inputs: ['main'],
-		outputs: ['main', 'main'],
-		outputNames: ['syslog', 'passthrough'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'syslogServer',
@@ -48,7 +47,8 @@ export class Syslog implements INodeType {
 					},
 				],
 				default: 'default',
-				description: 'Which syslog version to use. Choose "Default" to use the setting from your credential, or override with a specific version.',
+				description:
+					'Which syslog version to use. Choose "Default" to use the setting from your credential, or override with a specific version.',
 			},
 			{
 				displayName: 'Facility',
@@ -178,11 +178,11 @@ export class Syslog implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Enable Passthrough',
-				name: 'enablePassthrough',
-				type: 'boolean',
-				default: true,
-				description: 'Whether to pass the input data through to a second output',
+				displayName: 'Item Key Name',
+				name: 'itemKeyName',
+				type: 'string',
+				default: 'syslogStatus',
+				description: 'Name of the object key that is added to the item',
 			},
 		],
 	};
@@ -190,20 +190,24 @@ export class Syslog implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
-		const passthroughData: INodeExecutionData[] = [];
 
 		const credentials = await this.getCredentials('syslogServer');
-		const { host: syslogHost, port: syslogPort, protocol, rfc: credentialRfc } = credentials as {
+		const {
+			host: syslogHost,
+			port: syslogPort,
+			protocol,
+			rfc: credentialRfc,
+		} = credentials as {
 			host: string;
 			port: number;
 			protocol: string;
 			rfc: boolean;
 		};
 
-		const enablePassthrough = this.getNodeParameter('enablePassthrough', 0) as boolean;
 		const nodeRfc = this.getNodeParameter('rfc', 0) as string | boolean;
 		const hostname = this.getNodeParameter('hostname', 0) as string;
 		const appName = this.getNodeParameter('appname', 0) as string;
+		const itemKeyName = this.getNodeParameter('itemKeyName', 0) as string;
 
 		// Determine which RFC setting to use: node override or credential default
 		const rfc = nodeRfc === 'default' ? credentialRfc : (nodeRfc as boolean);
@@ -277,21 +281,20 @@ export class Syslog implements INodeType {
 				});
 
 				returnData.push({
-					json: { status: 'Message sent to syslog', message },
+					json: {
+						...items[i].json,
+						[itemKeyName]: {
+							status: 'Message sent',
+							message,
+						},
+					},
+					pairedItem: { item: i },
 				});
-
-				if (enablePassthrough) {
-					passthroughData.push(items[i]);
-				}
 			}
 		} catch (error) {
 			throw new NodeOperationError(this.getNode(), error);
 		}
 
-		if (enablePassthrough) {
-			return [returnData, passthroughData];
-		} else {
-			return [returnData];
-		}
+		return [returnData];
 	}
 }
