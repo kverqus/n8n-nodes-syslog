@@ -1,19 +1,17 @@
 {
-	"node": "n8n-nodes-base.Syslog",
+	"node": "n8n-nodes-syslog.syslog",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Miscellaneous"
-	],
+	"categories": ["Miscellaneous"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": ""
+				"url": "https://github.com/kverqus/n8n-nodes-syslog#readme"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": ""
+				"url": "https://github.com/kverqus/n8n-nodes-syslog#readme"
 			}
 		]
 	}

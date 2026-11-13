@@ -1,12 +1,9 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class SyslogServerApi implements ICredentialType {
 	name = 'syslogServerApi';
-	displayName = 'Syslog Server';
-	documentationUrl = '';
+	displayName = 'Syslog Server API';
+	documentationUrl = 'https://github.com/kverqus/n8n-nodes-syslog#readme';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',
