@@ -257,7 +257,7 @@ export class Syslog implements INodeType {
 					itemKeyName = this.getNodeParameter('itemKeyName', i) as string;
 					const nodeRfc = this.getNodeParameter('rfc', i) as string | boolean;
 					const hostname = this.getNodeParameter('hostname', i) as string;
-					const appName = this.getNodeParameter('appname', i) as string;
+					const appName = (this.getNodeParameter('appname', i) as string) || 'n8n';
 					const message = this.getNodeParameter('message', i) as string;
 					const facility = this.getNodeParameter('facility', i) as number;
 					const severity = this.getNodeParameter('severity', i) as number;
@@ -271,12 +271,15 @@ export class Syslog implements INodeType {
 						severity: severityLevels[severity as SeverityKeys],
 						rfc3164: rfc,
 						syslogHostname: hostname,
-						appName: appName || undefined,
+						appName,
 					};
+
+					// RFC3164 has no app name field, so send it as the tag
+					const syslogMessage = rfc ? `${appName}: ${message}` : message;
 
 					// Send message to syslog
 					await new Promise<void>((resolve, reject) => {
-						client.log(message, messageOptions, (error) => {
+						client.log(syslogMessage, messageOptions, (error) => {
 							if (error) {
 								reject(error);
 							} else {
