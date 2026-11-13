@@ -256,6 +256,9 @@ export class Syslog implements INodeType {
 
 		const client = syslog.createClient(syslogHost, clientOptions);
 
+		// Prevent unhandled error events from crashing n8n
+		client.on('error', () => {});
+
 		try {
 			for (let i = 0; i < items.length; i++) {
 				// Get item parameters
@@ -293,6 +296,9 @@ export class Syslog implements INodeType {
 			}
 		} catch (error) {
 			throw new NodeOperationError(this.getNode(), error);
+		} finally {
+			// Close client connection
+			client.close();
 		}
 
 		return [returnData];
