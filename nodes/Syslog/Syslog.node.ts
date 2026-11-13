@@ -316,8 +316,14 @@ export class Syslog implements INodeType {
 						clientTransport.transport_ = socket;
 					}
 
+					// Escape line breaks so a message can't be split
+					const cleanMessage = message
+						.replace(/[\r\n]+$/, '')
+						.replace(/\r/g, '\\r')
+						.replace(/\n/g, '\\n');
+
 					// RFC3164 has no app name field, so send it as the tag
-					const syslogMessage = rfc ? `${appName}: ${message}` : message;
+					const syslogMessage = rfc ? `${appName}: ${cleanMessage}` : cleanMessage;
 
 					// Send message to syslog
 					await new Promise<void>((resolve, reject) => {

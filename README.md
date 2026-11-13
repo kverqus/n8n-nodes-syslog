@@ -16,6 +16,10 @@ Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes
 
 The syslog server is configured in the credential. UDP, TCP and TLS (over TCP) are supported. For TLS you can provide a CA certificate, or leave it empty to use the system trust store. Messages are sent one per line, so the server needs to accept newline delimited messages. Client certificates are not supported.
 
+## Messages
+
+Line breaks in the message are escaped as `\n` and `\r`, so each message is always a single syslog entry. The node does not truncate messages. The size limit depends on the receiver: over UDP a message larger than a datagram (about 64 KiB) fails with an error, and many servers truncate or split long messages at around 8 KiB.
+
 ## Compatibility
 
 Tested on N8N > 1.109.2
