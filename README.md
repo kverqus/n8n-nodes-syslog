@@ -35,7 +35,7 @@ The syslog server is configured in a **Syslog Server API** credential.
 
 | Parameter | Description |
 | --- | --- |
-| Syslog Version | Use the version from the credential (default), or override it with RFC3164 or RFC5424 |
+| Syslog Version | Use the version from the credential (default), or override it with RFC3164 or RFC5424. In an expression use `rfc3164` or `rfc5424`, any other value is an error |
 | Facility | Facility of the message, defaults to User |
 | Severity | Severity of the message, defaults to Informational |
 | Hostname | Hostname to put in the message, defaults to `localhost` |

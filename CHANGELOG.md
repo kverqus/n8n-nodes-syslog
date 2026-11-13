@@ -15,12 +15,14 @@
 - In RFC3164 messages the application name is sent as the tag in front of the message
 - An empty application name now always falls back to `n8n`
 - Line breaks in messages are escaped so a message is always a single entry
+- The syslog version can be set from an expression using `rfc3164` or `rfc5424`
 - Errors now include the index of the item that failed
 - The credential is now displayed as Syslog Server API
 - Replaced gulp with a small copy script and updated the development dependencies
 
 ### Fixed
 
+- An unknown syslog version now fails with an error instead of silently using RFC3164
 - The connection to the syslog server was never closed, leaking a socket for every execution
 - A connection error could crash n8n instead of failing the node
 

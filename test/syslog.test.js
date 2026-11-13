@@ -1,4 +1,4 @@
-const { test, before, after } = require('node:test');
+const { test, before, after, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const dgram = require('node:dgram');
 const fs = require('node:fs');
@@ -19,11 +19,21 @@ let tmpDir;
 before(() => {
 	tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'syslog-test-'));
 	const result = spawnSync('openssl', [
-		'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '2',
-		'-subj', '/CN=localhost',
-		'-addext', 'subjectAltName=DNS:localhost,IP:127.0.0.1',
-		'-keyout', path.join(tmpDir, 'key.pem'),
-		'-out', path.join(tmpDir, 'cert.pem'),
+		'req',
+		'-x509',
+		'-newkey',
+		'rsa:2048',
+		'-nodes',
+		'-days',
+		'2',
+		'-subj',
+		'/CN=localhost',
+		'-addext',
+		'subjectAltName=DNS:localhost,IP:127.0.0.1',
+		'-keyout',
+		path.join(tmpDir, 'key.pem'),
+		'-out',
+		path.join(tmpDir, 'cert.pem'),
 	]);
 
 	if (result.status === 0) {
@@ -34,6 +44,19 @@ before(() => {
 
 after(() => {
 	fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+// Receivers are closed after every test, so a failing test can't keep the runner alive
+const closers = [];
+
+afterEach(() => {
+	closers.splice(0).forEach((close) => {
+		try {
+			close();
+		} catch {
+			// Already closed
+		}
+	});
 });
 
 // Collects everything a receiver gets and lets a test wait for a number of messages
@@ -71,6 +94,7 @@ const udpReceiver = async () => {
 	const server = dgram.createSocket('udp4');
 	server.on('message', (data) => received.push(data.toString()));
 	await new Promise((resolve) => server.bind(0, '127.0.0.1', resolve));
+	closers.push(() => server.close());
 
 	return { ...received, port: server.address().port, close: () => server.close() };
 };
@@ -97,6 +121,7 @@ const streamReceiver = async (secure) => {
 	const server = secure ? tls.createServer({ key, cert }, handler) : net.createServer(handler);
 	server.on('tlsClientError', () => {});
 	await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+	closers.push(() => server.close());
 
 	return {
 		...received,
@@ -129,7 +154,12 @@ const run = ({ credentials, params = {}, items = [{ json: {} }], continueOnFail 
 
 	const context = {
 		getInputData: () => items,
-		getCredentials: async () => ({ host: '127.0.0.1', rfc: false, protocol: 'udp', ...credentials }),
+		getCredentials: async () => ({
+			host: '127.0.0.1',
+			rfc: false,
+			protocol: 'udp',
+			...credentials,
+		}),
 		getNodeParameter: (name, i) => (typeof all[name] === 'function' ? all[name](i) : all[name]),
 		getNode: () => ({ name: 'Syslog', type: 'syslog', typeVersion: 1, parameters: {} }),
 		continueOnFail: () => continueOnFail,
@@ -166,6 +196,51 @@ test('node syslog version overrides the credential default', async () => {
 
 	assert.match(first, /^<134>[A-Z][a-z]{2} /);
 	assert.match(second, /^<134>1 /);
+});
+
+test('accepts the syslog version as text, for example from an expression', async () => {
+	const receiver = await udpReceiver();
+	const send = (rfc) => run({ credentials: { port: receiver.port }, params: { rfc } });
+	await send('rfc3164');
+	await send('RFC5424');
+	await send('true');
+	await send('false');
+	const messages = await receiver.waitFor(4);
+	receiver.close();
+
+	// Datagrams can arrive in any order, so look at which formats showed up
+	const rfc3164 = messages.filter((message) => /^<134>[A-Z][a-z]{2} /.test(message));
+	const rfc5424 = messages.filter((message) => /^<134>1 /.test(message));
+	assert.equal(rfc3164.length, 2);
+	assert.equal(rfc5424.length, 2);
+});
+
+test('fails on an unknown syslog version instead of picking one', async () => {
+	const receiver = await udpReceiver();
+
+	await assert.rejects(
+		run({ credentials: { port: receiver.port }, params: { rfc: 'bogus' } }),
+		(error) => {
+			assert.ok(error instanceof NodeOperationError);
+			assert.match(error.message, /Unknown syslog version "bogus"/);
+			assert.equal(error.context.itemIndex, 0);
+			return true;
+		},
+	);
+	await new Promise((resolve) => setTimeout(resolve, 100));
+	const sent = receiver.messages.length;
+	receiver.close();
+
+	assert.equal(sent, 0);
+});
+
+test('uses RFC5424 when the credential has no syslog version', async () => {
+	const receiver = await udpReceiver();
+	await run({ credentials: { port: receiver.port, rfc: undefined } });
+	const [message] = await receiver.waitFor(1);
+	receiver.close();
+
+	assert.match(message, /^<134>1 /);
 });
 
 test('uses the credential syslog version by default', async () => {

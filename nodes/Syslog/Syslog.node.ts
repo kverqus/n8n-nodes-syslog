@@ -10,6 +10,17 @@ import * as net from 'net';
 import * as syslog from 'syslog-client';
 import * as tls from 'tls';
 
+// Returns true for RFC3164, false for RFC5424 and undefined if it's something else.
+// The options store booleans, but text is accepted to make expressions easier
+const parseRfc3164 = (value: unknown): boolean | undefined => {
+	const version = String(value).toLowerCase();
+
+	if (version === 'true' || version === 'rfc3164') return true;
+	if (version === 'false' || version === 'rfc5424') return false;
+
+	return undefined;
+};
+
 // syslog-client has no TLS support, so open the connection ourselves
 const connectTls = (options: tls.ConnectionOptions) =>
 	new Promise<tls.TLSSocket>((resolve, reject) => {
@@ -218,7 +229,7 @@ export class Syslog implements INodeType {
 			host: string;
 			port: number;
 			protocol: string;
-			rfc: boolean;
+			rfc?: boolean;
 			caCertificate?: string;
 			allowUnauthorizedCerts?: boolean;
 		};
@@ -285,7 +296,14 @@ export class Syslog implements INodeType {
 					const severity = this.getNodeParameter('severity', i) as number;
 
 					// Determine which RFC setting to use: node override or credential default
-					const rfc = nodeRfc === 'default' ? credentialRfc : (nodeRfc as boolean);
+					const rfcValue = nodeRfc === 'default' ? (credentialRfc ?? false) : nodeRfc;
+					const rfc = parseRfc3164(rfcValue);
+
+					if (rfc === undefined) {
+						throw new NodeOperationError(this.getNode(), `Unknown syslog version "${rfcValue}"`, {
+							itemIndex: i,
+						});
+					}
 
 					// Configure message options
 					const messageOptions = {
