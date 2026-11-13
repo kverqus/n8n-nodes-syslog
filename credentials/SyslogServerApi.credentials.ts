@@ -37,10 +37,42 @@ export class SyslogServerApi implements ICredentialType {
 					name: 'TCP',
 					value: 'tcp',
 				},
+				{
+					name: 'TLS (Over TCP)',
+					value: 'tls',
+				},
 			],
 			default: 'udp',
-			description: 'The protocol to use for sending syslog messages',
+			description: 'The protocol to use for sending syslog messages. TLS usually uses port 6514.',
 			required: true,
+		},
+		{
+			displayName: 'CA Certificate',
+			name: 'caCertificate',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+			description:
+				'PEM encoded CA certificate used to verify the server. Leave empty to use the system trust store.',
+			displayOptions: {
+				show: {
+					protocol: ['tls'],
+				},
+			},
+		},
+		{
+			displayName: 'Ignore SSL Issues (Insecure)',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to connect even if the server certificate cannot be verified',
+			displayOptions: {
+				show: {
+					protocol: ['tls'],
+				},
+			},
 		},
 		{
 			displayName: 'Syslog Version',

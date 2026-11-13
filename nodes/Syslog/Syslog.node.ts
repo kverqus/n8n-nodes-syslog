@@ -6,7 +6,22 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
+import * as net from 'net';
 import * as syslog from 'syslog-client';
+import * as tls from 'tls';
+
+// syslog-client has no TLS support, so open the connection ourselves
+const connectTls = (options: tls.ConnectionOptions) =>
+	new Promise<tls.TLSSocket>((resolve, reject) => {
+		const socket = tls.connect(options, () => {
+			socket.off('error', reject);
+			socket.setTimeout(0);
+			resolve(socket);
+		});
+
+		socket.once('error', reject);
+		socket.setTimeout(10000, () => socket.destroy(new Error('connection timed out')));
+	});
 
 export class Syslog implements INodeType {
 	description: INodeTypeDescription = {
@@ -197,11 +212,15 @@ export class Syslog implements INodeType {
 			port: syslogPort,
 			protocol,
 			rfc: credentialRfc,
+			caCertificate,
+			allowUnauthorizedCerts,
 		} = credentials as {
 			host: string;
 			port: number;
 			protocol: string;
 			rfc: boolean;
+			caCertificate?: string;
+			allowUnauthorizedCerts?: boolean;
 		};
 
 		// Constant array for use with logOptions to set facility based on
@@ -239,11 +258,14 @@ export class Syslog implements INodeType {
 
 		// Configure syslog client options
 		const clientOptions = {
-			transport: protocol === 'tcp' ? syslog.Transport.Tcp : syslog.Transport.Udp,
+			transport: ['tcp', 'tls'].includes(protocol) ? syslog.Transport.Tcp : syslog.Transport.Udp,
 			port: syslogPort,
 		};
 
 		const client = syslog.createClient(syslogHost, clientOptions);
+
+		// The client reuses its transport if one is set, which is how TLS is plugged in
+		const clientTransport = client as unknown as { transport_?: tls.TLSSocket };
 
 		// Prevent unhandled error events from crashing n8n
 		client.on('error', () => {});
@@ -273,6 +295,26 @@ export class Syslog implements INodeType {
 						syslogHostname: hostname,
 						appName,
 					};
+
+					// Connect with TLS, also reconnects if the connection was lost
+					if (protocol === 'tls' && !clientTransport.transport_) {
+						const socket = await connectTls({
+							host: syslogHost,
+							port: syslogPort,
+							servername: net.isIP(syslogHost) ? undefined : syslogHost,
+							ca: caCertificate || undefined,
+							rejectUnauthorized: !allowUnauthorizedCerts,
+						});
+
+						socket.on('error', (error) => {
+							if (clientTransport.transport_ === socket) client.onError(error);
+						});
+						socket.on('close', () => {
+							if (clientTransport.transport_ === socket) client.onClose();
+						});
+
+						clientTransport.transport_ = socket;
+					}
 
 					// RFC3164 has no app name field, so send it as the tag
 					const syslogMessage = rfc ? `${appName}: ${message}` : message;
