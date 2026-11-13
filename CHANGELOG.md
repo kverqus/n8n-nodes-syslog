@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 - 2026-11-13
+
+### Upgrade notes
+
+Existing workflows and credentials keep working. A few things behave differently and may be noticeable on the receiving side:
+
+- RFC3164 messages now start with the application name as a tag (`appname: message`)
+- Line breaks in messages are escaped as `\n` and `\r`
+- An empty application name is always sent as `n8n`
 
 ### Added
 
